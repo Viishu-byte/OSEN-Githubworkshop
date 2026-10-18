@@ -320,7 +320,7 @@
 
         if (phase === "record") {
           phaseName.textContent = "Phase 1 · Record";
-          objective.textContent = buttonPressed ? "Button activated — reach the exit to plan the Ghost's route." : "Reach the red button before time runs out.";
+          objective.textContent = buttonPressed ? "Button activated — reach the exit to plan the Ghost's route." : "Touch the red button before time runs out.";
         } else if (phase === "rewind") {
           phaseName.textContent = "Rewinding time";
           phaseDot.classList.add("rewind");
@@ -328,9 +328,11 @@
         } else if (phase === "echo") {
           phaseName.textContent = "Phase 2 · Echo";
           phaseDot.classList.add("blue");
-          objective.textContent = ghostArrived && playerArrived
+          objective.textContent = buttonPressed && ghostArrived && playerArrived
             ? "Both made it — timeline synchronized."
-            : "Stand on the green switch as the Ghost crosses the beam, then reach the exit.";
+            : buttonPressed
+              ? "Button activated — shield the Ghost at the green switch, then reach the exit."
+              : "Touch the red button, shield the Ghost at the green switch, then reach the exit.";
         } else if (phase === "won") {
           phaseName.textContent = "Timeline restored";
           phaseDot.classList.add("done");
@@ -360,6 +362,7 @@
       function beginPlayback() {
         phase = "echo";
         phaseTime = 0;
+        buttonPressed = false;
         ghost = { ...frames[0] };
         player = { ...START };
         updateHud();
@@ -403,6 +406,12 @@
         return Math.hypot(point.x - closestX, point.y - y) < radius + 4;
       }
 
+      function checkButtonTrigger() {
+        if (buttonPressed || distance(player, BUTTON) > PLAYER_RADIUS + BUTTON.radius) return;
+        buttonPressed = true;
+        updateHud();
+      }
+
       function update(dt, now) {
         if (phase === "record") {
           phaseTime += dt;
@@ -412,15 +421,12 @@
             finish("Caught in the beam", "The moving laser erased your recording. Try a different route.");
             return;
           }
-          if (!buttonPressed && distance(player, BUTTON) < PLAYER_RADIUS + BUTTON.radius) {
-            buttonPressed = true;
-            updateHud();
-          }
+          checkButtonTrigger();
           frames.push({ x: player.x, y: player.y });
 
           if (phaseTime >= ROUND_SECONDS) {
             if (!buttonPressed) {
-              finish("Signal not captured", "Reach the red button before the 10-second recording window closes.");
+              finish("Signal not captured", "Touch the red button before the 10-second recording window closes.");
               return;
             }
             startEcho(now);
@@ -434,6 +440,8 @@
           const frameIndex = Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1)));
           ghost = { ...frames[frameIndex] };
 
+          checkButtonTrigger();
+
           const shielded = distance(player, SWITCH) < SWITCH.radius + PLAYER_RADIUS;
           if (!shielded && ghost.x + PLAYER_RADIUS > echoLaser.x && ghost.x - PLAYER_RADIUS < echoLaser.x
               && ghost.y > echoLaser.top && ghost.y < echoLaser.bottom) {
@@ -443,7 +451,7 @@
 
           if (distance(ghost, EXIT) < EXIT.radius) ghostArrived = true;
           if (distance(player, EXIT) < EXIT.radius) playerArrived = true;
-          if (ghostArrived && playerArrived) {
+          if (buttonPressed && ghostArrived && playerArrived) {
             finish("A perfect echo", "You and your Ghost escaped together. The timeline is yours.", true);
             return;
           }
@@ -520,7 +528,7 @@
         ctx.fillStyle = "#ffe6e9";
         ctx.font = "700 10px system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(buttonPressed ? "ON" : "PRESS", BUTTON.x, BUTTON.y + 36);
+        ctx.fillText(buttonPressed ? "ON" : "TOUCH", BUTTON.x, BUTTON.y + 36);
         ctx.restore();
       }
 
