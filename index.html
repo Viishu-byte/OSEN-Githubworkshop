@@ -267,6 +267,7 @@
       const HEIGHT = canvas.height;
       const ROUND_SECONDS = 10;
       const PLAYER_RADIUS = 12;
+      const SPRITE_RADIUS = 18;
       const SPEED = 235;
       const START = { x: 72, y: 480 };
       const BUTTON = { x: 410, y: 480, radius: 19 };
@@ -699,13 +700,13 @@
         }
 
         if (phase === "echo" || phase === "won" || phase === "lost") {
-          drawEntity(ghost, "#9b7aff", "#b38cff", "G", phase === "won" ? .95 : .52, PLAYER_RADIUS);
+          drawEntity(ghost, "#9b7aff", "#b38cff", "G", phase === "won" ? .95 : .52, SPRITE_RADIUS);
         }
 
         if (phase === "rewind" && rewindFrom) {
           const p = Math.min(1, (now - rewindStarted) / 1250);
           const jitter = Math.sin(now / 22) * (1 - p) * 8;
-          drawEntity({ x: rewindFrom.x + jitter, y: rewindFrom.y }, "#b77a3f", "#e5aa58", "1", .85 - p * .5, PLAYER_RADIUS);
+          drawEntity({ x: rewindFrom.x + jitter, y: rewindFrom.y }, "#b77a3f", "#e5aa58", "1", .85 - p * .5, SPRITE_RADIUS);
           ctx.save();
           ctx.strokeStyle = `rgba(177, 126, 255, ${.24 * (1 - p)})`;
           ctx.lineWidth = 2;
@@ -718,7 +719,7 @@
           }
           ctx.restore();
         } else {
-          drawEntity(player, "#b77a3f", "#e5aa58", phase === "record" ? "1" : "2");
+          drawEntity(player, "#b77a3f", "#e5aa58", phase === "record" ? "1" : "2", 1, SPRITE_RADIUS);
         }
 
         if (phase === "record") {
