@@ -634,23 +634,60 @@
       }
 
       function drawEntity(point, color, glow, label, alpha = 1, radius = PLAYER_RADIUS) {
+        const isGhost = color === "#9b7aff";
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.shadowColor = glow;
         ctx.shadowBlur = 18;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.moveTo(point.x - radius * .78, point.y - radius * .18);
+        ctx.lineTo(point.x - radius * 1.02, point.y - radius * .92);
+        ctx.lineTo(point.x - radius * .22, point.y - radius * .63);
+        ctx.quadraticCurveTo(point.x, point.y - radius * .78, point.x + radius * .22, point.y - radius * .63);
+        ctx.lineTo(point.x + radius * 1.02, point.y - radius * .92);
+        ctx.lineTo(point.x + radius * .78, point.y - radius * .18);
+        ctx.quadraticCurveTo(point.x + radius, point.y + radius * .78, point.x, point.y + radius * .82);
+        ctx.quadraticCurveTo(point.x - radius, point.y + radius * .78, point.x - radius * .78, point.y - radius * .18);
+        ctx.closePath();
         ctx.fillStyle = color;
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.strokeStyle = "rgba(255,255,255,.7)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
-        ctx.fillStyle = "rgba(8, 15, 27, .88)";
-        ctx.font = "800 8px system-ui, sans-serif";
+
+        ctx.fillStyle = isGhost ? "#e5d9ff" : "#f5d28d";
+        ctx.beginPath();
+        ctx.moveTo(point.x - radius * .73, point.y - radius * .69);
+        ctx.lineTo(point.x - radius * .43, point.y - radius * .54);
+        ctx.lineTo(point.x - radius * .75, point.y - radius * .34);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(point.x + radius * .73, point.y - radius * .69);
+        ctx.lineTo(point.x + radius * .43, point.y - radius * .54);
+        ctx.lineTo(point.x + radius * .75, point.y - radius * .34);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = isGhost ? "#f4edff" : "#21170f";
+        ctx.beginPath();
+        ctx.ellipse(point.x - radius * .34, point.y + radius * .02, radius * .09, radius * .15, 0, 0, Math.PI * 2);
+        ctx.ellipse(point.x + radius * .34, point.y + radius * .02, radius * .09, radius * .15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = isGhost ? "#e5d9ff" : "#3d2518";
+        ctx.beginPath();
+        ctx.moveTo(point.x - radius * .13, point.y + radius * .26);
+        ctx.lineTo(point.x + radius * .13, point.y + radius * .26);
+        ctx.lineTo(point.x, point.y + radius * .39);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = isGhost ? "#f4edff" : "#fff0ce";
+        ctx.font = "800 5px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(label, point.x, point.y + .5);
+        ctx.fillText(label, point.x, point.y + radius * .62);
         ctx.restore();
       }
 
@@ -668,7 +705,7 @@
         if (phase === "rewind" && rewindFrom) {
           const p = Math.min(1, (now - rewindStarted) / 1250);
           const jitter = Math.sin(now / 22) * (1 - p) * 8;
-          drawEntity({ x: rewindFrom.x + jitter, y: rewindFrom.y }, "#b78aff", "#bd83ff", "↶", .85 - p * .5);
+          drawEntity({ x: rewindFrom.x + jitter, y: rewindFrom.y }, "#b77a3f", "#e5aa58", "1", .85 - p * .5, PLAYER_RADIUS);
           ctx.save();
           ctx.strokeStyle = `rgba(177, 126, 255, ${.24 * (1 - p)})`;
           ctx.lineWidth = 2;
@@ -681,9 +718,7 @@
           }
           ctx.restore();
         } else {
-          const color = phase === "record" ? "#ff5368" : "#45c9ff";
-          const glow = phase === "record" ? "#ff5368" : "#45c9ff";
-          drawEntity(player, color, glow, phase === "record" ? "1" : "2");
+          drawEntity(player, "#b77a3f", "#e5aa58", phase === "record" ? "1" : "2");
         }
 
         if (phase === "record") {
