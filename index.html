@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d18">
+  <title>Chrono Echo — A Time-Rewind Puzzle</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #080d18;
+      color: #e9f1ff;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px 18px;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(25, 52, 92, .34), transparent 55%),
+        #080d18;
+    }
+
+    .game-shell { width: min(100%, 980px); }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 4px 15px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(87, 211, 255, .45);
+      border-radius: 12px;
+      color: #65d9ff;
+      background: rgba(38, 125, 168, .12);
+      box-shadow: 0 0 24px rgba(49, 192, 255, .1), inset 0 0 14px rgba(49, 192, 255, .08);
+      font-size: 20px;
+    }
+
+    h1 { margin: 0; font-size: 17px; letter-spacing: .15em; font-weight: 750; }
+    .subtitle { margin-top: 3px; color: #8190a8; font-size: 11px; letter-spacing: .08em; }
+
+    .restart {
+      border: 1px solid #29364b;
+      border-radius: 9px;
+      padding: 9px 13px;
+      color: #cbd7e9;
+      background: #111a29;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color .2s, color .2s, background .2s;
+    }
+
+    .restart:hover { border-color: #55cfff; color: #fff; background: #142337; }
+    .restart kbd { margin-left: 7px; color: #8291a8; font: inherit; font-size: 10px; }
+
+    .panel {
+      overflow: hidden;
+      border: 1px solid #1c2a3e;
+      border-radius: 16px;
+      background: #0b1220;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .38), 0 0 48px rgba(49, 136, 200, .06);
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 18px;
+      padding: 15px 19px 13px;
+      border-bottom: 1px solid #182438;
+      background: linear-gradient(180deg, rgba(17, 27, 44, .9), rgba(11, 18, 32, .9));
+    }
+
+    .phase-label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #eff6ff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .phase-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff546a;
+      box-shadow: 0 0 11px #ff546a;
+    }
+
+    .phase-dot.blue { background: #50cfff; box-shadow: 0 0 11px #50cfff; }
+    .phase-dot.rewind { background: #bd83ff; box-shadow: 0 0 11px #bd83ff; }
+    .phase-dot.done { background: #5cf2b1; box-shadow: 0 0 11px #5cf2b1; }
+
+    .timer-readout { color: #b8c6da; font-variant-numeric: tabular-nums; font-size: 12px; }
+    .timer-readout strong { color: #f4f8ff; font-size: 17px; font-weight: 650; }
+
+    .timer-track {
+      height: 3px;
+      background: #17243a;
+      grid-column: 1 / -1;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+
+    .timer-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ff5370, #ffb45b);
+      box-shadow: 0 0 12px rgba(255, 94, 112, .55);
+      transition: width .08s linear, background .3s;
+    }
+
+    .timer-fill.blue {
+      background: linear-gradient(90deg, #35aaff, #57f3e3);
+      box-shadow: 0 0 12px rgba(53, 170, 255, .55);
+    }
+
+    .canvas-wrap { position: relative; background: #09111f; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 900 / 560; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(5, 9, 17, .62);
+      backdrop-filter: blur(5px);
+    }
+
+    .overlay[hidden] { display: none; }
+
+    .message-card {
+      width: min(100%, 360px);
+      padding: 28px;
+      border: 1px solid rgba(98, 198, 255, .25);
+      border-radius: 15px;
+      background: rgba(12, 21, 36, .95);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, .4);
+      text-align: center;
+    }
+
+    .message-card h2 { margin: 0 0 9px; font-size: 22px; letter-spacing: .02em; }
+    .message-card p { margin: 0 0 20px; color: #a2b2c9; font-size: 13px; line-height: 1.6; }
+    .message-card button {
+      border: 1px solid rgba(81, 211, 255, .6);
+      border-radius: 9px;
+      padding: 10px 17px;
+      color: #eafaff;
+      background: rgba(41, 153, 199, .2);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .message-card button:hover { background: rgba(41, 153, 199, .34); }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 13px 4px 0;
+      color: #75849a;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .footer strong { color: #adbbd0; font-weight: 600; }
+    .objective { text-align: right; }
+    .keycap {
+      display: inline-block;
+      min-width: 19px;
+      margin: 0 1px;
+      padding: 1px 4px;
+      border: 1px solid #29364a;
+      border-radius: 4px;
+      color: #b9c7da;
+      background: #111a28;
+      text-align: center;
+      font-size: 10px;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 18px 10px; }
+      .hud { padding: 12px 13px 11px; }
+      .footer { font-size: 10px; }
+      .objective { max-width: 50%; }
+      .brand-mark { width: 34px; height: 34px; }
+      h1 { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell">
+    <header class="topline">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">↶</div>
+        <div>
+          <h1>CHRONO ECHO</h1>
+          <div class="subtitle">A TIME-REWIND PUZZLE</div>
+        </div>
+      </div>
+      <button class="restart" id="restart" type="button" aria-label="Restart game">Restart <kbd>R</kbd></button>
+    </header>
+
+    <section class="panel" aria-label="Chrono Echo game">
+      <div class="hud">
+        <div class="phase-label"><span class="phase-dot" id="phaseDot"></span><span id="phaseName">Phase 1 · Record</span></div>
+        <div class="timer-readout"><strong id="timer">10.0</strong> sec</div>
+        <div class="timer-track" aria-label="Time remaining"><div class="timer-fill" id="timerFill"></div></div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="game" width="900" height="560" aria-label="Game board. Use arrow keys or WASD to move."></canvas>
+        <div class="overlay" id="overlay" hidden>
+          <div class="message-card">
+            <h2 id="messageTitle"></h2>
+            <p id="messageText"></p>
+            <button type="button" id="playAgain">Play again</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div><strong>Move</strong> <span class="keycap">↑</span><span class="keycap">←</span><span class="keycap">↓</span><span class="keycap">→</span> / WASD <span style="margin-left:8px"><strong>Restart</strong> R</span></div>
+      <div class="objective" id="objective">Reach the red button before time runs out.</div>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const timerEl = document.getElementById("timer");
+      const timerFill = document.getElementById("timerFill");
+      const phaseName = document.getElementById("phaseName");
+      const phaseDot = document.getElementById("phaseDot");
+      const objective = document.getElementById("objective");
+      const overlay = document.getElementById("overlay");
+      const messageTitle = document.getElementById("messageTitle");
+      const messageText = document.getElementById("messageText");
+      const keys = new Set();
+
+      const WIDTH = canvas.width;
+      const HEIGHT = canvas.height;
+      const ROUND_SECONDS = 10;
+      const PLAYER_RADIUS = 12;
+      const SPEED = 235;
+      const START = { x: 72, y: 480 };
+      const BUTTON = { x: 410, y: 480, radius: 19 };
+      const SWITCH = { x: 500, y: 390, radius: 23 };
+      const EXIT = { x: 820, y: 480, radius: 30 };
+      const BLOCKS = [
+        { x: 245, y: 398, w: 128, h: 103 },
+        { x: 500, y: 135, w: 106, h: 170 },
+        { x: 710, y: 170, w: 95, h: 110 }
+      ];
+      const recordingLaser = { y: 345, length: 210 };
+      const echoLaser = { x: 650, top: 76, bottom: 533 };
+
+      let phase;
+      let phaseTime;
+      let lastTime = 0;
+      let player;
+      let ghost;
+      let frames;
+      let buttonPressed;
+      let ghostArrived;
+      let playerArrived;
+      let recordingLaserX;
+      let rewindStarted;
+      let rewindFrom;
+
+      function reset() {
+        phase = "record";
+        phaseTime = 0;
+        player = { ...START };
+        ghost = { ...START };
+        frames = [{ ...START }];
+        buttonPressed = false;
+        ghostArrived = false;
+        playerArrived = false;
+        recordingLaserX = 140;
+        rewindStarted = 0;
+        rewindFrom = null;
+        overlay.hidden = true;
+        updateHud();
+      }
+
+      function updateHud() {
+        let remaining = Math.max(0, ROUND_SECONDS - phaseTime);
+        if (phase === "rewind") remaining = 0;
+        if (phase === "won" || phase === "lost") remaining = 0;
+        timerEl.textContent = remaining.toFixed(1);
+        timerFill.style.width = `${Math.max(0, remaining / ROUND_SECONDS * 100)}%`;
+        timerFill.classList.toggle("blue", phase === "echo");
+        phaseDot.className = "phase-dot";
+
+        if (phase === "record") {
+          phaseName.textContent = "Phase 1 · Record";
+          objective.textContent = buttonPressed ? "Button activated — reach the exit to plan the Ghost's route." : "Reach the red button before time runs out.";
+        } else if (phase === "rewind") {
+          phaseName.textContent = "Rewinding time";
+          phaseDot.classList.add("rewind");
+          objective.textContent = "Your movements are becoming an Echo...";
+        } else if (phase === "echo") {
+          phaseName.textContent = "Phase 2 · Echo";
+          phaseDot.classList.add("blue");
+          objective.textContent = ghostArrived && playerArrived
+            ? "Both made it — timeline synchronized."
+            : "Stand on the green switch as the Ghost crosses the beam, then reach the exit.";
+        } else if (phase === "won") {
+          phaseName.textContent = "Timeline restored";
+          phaseDot.classList.add("done");
+          objective.textContent = "Both entities reached the exit portal.";
+        } else {
+          phaseName.textContent = "Timeline collapsed";
+          objective.textContent = "Press R or Restart to try again.";
+        }
+      }
+
+      function finish(title, text, won = false) {
+        phase = won ? "won" : "lost";
+        updateHud();
+        messageTitle.textContent = title;
+        messageText.textContent = text;
+        overlay.hidden = false;
+      }
+
+      function startEcho(now) {
+        phase = "rewind";
+        phaseTime = 0;
+        rewindStarted = now;
+        rewindFrom = player ? { ...player } : { ...START };
+        updateHud();
+      }
+
+      function beginPlayback() {
+        phase = "echo";
+        phaseTime = 0;
+        ghost = { ...frames[0] };
+        player = { ...START };
+        updateHud();
+      }
+
+      function distance(a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+      }
+
+      function circleHitsBlock(point, radius) {
+        return BLOCKS.some(block => {
+          const nearestX = Math.max(block.x, Math.min(point.x, block.x + block.w));
+          const nearestY = Math.max(block.y, Math.min(point.y, block.y + block.h));
+          return Math.hypot(point.x - nearestX, point.y - nearestY) < radius;
+        });
+      }
+
+      function tryMove(point, dx, dy, radius) {
+        const nextX = { x: Math.max(radius, Math.min(WIDTH - radius, point.x + dx)), y: point.y };
+        if (!circleHitsBlock(nextX, radius)) point.x = nextX.x;
+        const nextY = { x: point.x, y: Math.max(radius, Math.min(HEIGHT - radius, point.y + dy)) };
+        if (!circleHitsBlock(nextY, radius)) point.y = nextY.y;
+      }
+
+      function playerInput(dt) {
+        let dx = 0;
+        let dy = 0;
+        if (keys.has("arrowleft") || keys.has("a")) dx -= 1;
+        if (keys.has("arrowright") || keys.has("d")) dx += 1;
+        if (keys.has("arrowup") || keys.has("w")) dy -= 1;
+        if (keys.has("arrowdown") || keys.has("s")) dy += 1;
+        if (dx && dy) {
+          dx *= Math.SQRT1_2;
+          dy *= Math.SQRT1_2;
+        }
+        tryMove(player, dx * SPEED * dt, dy * SPEED * dt, PLAYER_RADIUS);
+      }
+
+      function hazardTouches(point, x, y, length, radius) {
+        const closestX = Math.max(x, Math.min(point.x, x + length));
+        return Math.hypot(point.x - closestX, point.y - y) < radius + 4;
+      }
+
+      function update(dt, now) {
+        if (phase === "record") {
+          phaseTime += dt;
+          playerInput(dt);
+          recordingLaserX = 140 + (Math.sin(phaseTime * 1.13) + 1) * 270;
+          if (hazardTouches(player, recordingLaserX, recordingLaser.y, recordingLaser.length, PLAYER_RADIUS)) {
+            finish("Caught in the beam", "The moving laser erased your recording. Try a different route.");
+            return;
+          }
+          if (!buttonPressed && distance(player, BUTTON) < PLAYER_RADIUS + BUTTON.radius) {
+            buttonPressed = true;
+            updateHud();
+          }
+          frames.push({ x: player.x, y: player.y });
+
+          if (phaseTime >= ROUND_SECONDS) {
+            if (!buttonPressed) {
+              finish("Signal not captured", "Reach the red button before the 10-second recording window closes.");
+              return;
+            }
+            startEcho(now);
+          }
+        } else if (phase === "rewind") {
+          if (now - rewindStarted >= 1250) beginPlayback();
+        } else if (phase === "echo") {
+          phaseTime += dt;
+          playerInput(dt);
+          const progress = Math.min(1, phaseTime / ROUND_SECONDS);
+          const frameIndex = Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1)));
+          ghost = { ...frames[frameIndex] };
+
+          const shielded = distance(player, SWITCH) < SWITCH.radius + PLAYER_RADIUS;
+          if (!shielded && ghost.x + PLAYER_RADIUS > echoLaser.x && ghost.x - PLAYER_RADIUS < echoLaser.x
+              && ghost.y > echoLaser.top && ghost.y < echoLaser.bottom) {
+            finish("Echo lost", "The Ghost crossed the new laser without your shield. Stand on the green switch to protect it.");
+            return;
+          }
+
+          if (distance(ghost, EXIT) < EXIT.radius) ghostArrived = true;
+          if (distance(player, EXIT) < EXIT.radius) playerArrived = true;
+          if (ghostArrived && playerArrived) {
+            finish("A perfect echo", "You and your Ghost escaped together. The timeline is yours.", true);
+            return;
+          }
+          if (phaseTime >= ROUND_SECONDS) {
+            finish("Time expired", "Both you and the Ghost need to reach the exit within the echo window.");
+            return;
+          }
+        }
+        updateHud();
+      }
+
+      function roundedRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+      }
+
+      function drawBackground(now) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+        gradient.addColorStop(0, "#0b1525");
+        gradient.addColorStop(1, "#08101d");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(105, 148, 195, .075)";
+        ctx.lineWidth = 1;
+        for (let x = 20; x < WIDTH; x += 40) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, HEIGHT); ctx.stroke();
+        }
+        for (let y = 20; y < HEIGHT; y += 40) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WIDTH, y); ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.strokeStyle = "rgba(103, 151, 198, .16)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(12, 12, WIDTH - 24, HEIGHT - 24);
+        for (const block of BLOCKS) {
+          ctx.save();
+          ctx.shadowColor = "rgba(0, 0, 0, .5)";
+          ctx.shadowBlur = 14;
+          roundedRect(block.x, block.y, block.w, block.h, 9);
+          ctx.fillStyle = "#111d2d";
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = "#27384d";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.fillStyle = "rgba(86, 119, 157, .16)";
+          ctx.fillRect(block.x + 9, block.y + 9, block.w - 18, 3);
+          ctx.restore();
+        }
+        drawExit(now);
+        drawButton();
+        drawSwitch();
+      }
+
+      function drawButton() {
+        ctx.save();
+        ctx.shadowColor = buttonPressed ? "#ff5368" : "rgba(255, 65, 92, .65)";
+        ctx.shadowBlur = buttonPressed ? 24 : 14;
+        ctx.beginPath();
+        ctx.arc(BUTTON.x, BUTTON.y, BUTTON.radius + 5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 67, 89, .11)";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(BUTTON.x, BUTTON.y, BUTTON.radius, 0, Math.PI * 2);
+        ctx.fillStyle = buttonPressed ? "#ff5269" : "#b72c49";
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "#ff8796";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = "#ffe6e9";
+        ctx.font = "700 10px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(buttonPressed ? "ON" : "PRESS", BUTTON.x, BUTTON.y + 36);
+        ctx.restore();
+      }
+
+      function drawSwitch() {
+        const active = phase === "echo" && distance(player, SWITCH) < SWITCH.radius + PLAYER_RADIUS;
+        ctx.save();
+        ctx.shadowColor = active ? "#67ffc1" : "rgba(75, 255, 173, .42)";
+        ctx.shadowBlur = active ? 27 : 13;
+        ctx.beginPath();
+        ctx.arc(SWITCH.x, SWITCH.y, SWITCH.radius + 8, 0, Math.PI * 2);
+        ctx.fillStyle = active ? "rgba(74, 255, 170, .18)" : "rgba(74, 255, 170, .07)";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(SWITCH.x, SWITCH.y, SWITCH.radius, 0, Math.PI * 2);
+        ctx.fillStyle = active ? "#48e9a5" : "#147b5b";
+        ctx.fill();
+        ctx.strokeStyle = active ? "#b4ffda" : "#58dca7";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = active ? "#071d16" : "#d4ffeb";
+        ctx.font = "700 9px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(active ? "SHIELD" : "SWITCH", SWITCH.x, SWITCH.y + 3);
+        ctx.restore();
+      }
+
+      function drawExit(now) {
+        const pulse = 1 + Math.sin(now / 320) * .07;
+        ctx.save();
+        ctx.translate(EXIT.x, EXIT.y);
+        ctx.scale(pulse, pulse);
+        ctx.shadowColor = "#a879ff";
+        ctx.shadowBlur = 23;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, EXIT.radius, EXIT.radius * 1.23, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(143, 93, 255, .1)";
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#9d74ff";
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, EXIT.radius * .64, EXIT.radius * .91, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(196, 168, 255, .72)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = "#c9b5ff";
+        ctx.font = "700 10px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("EXIT", EXIT.x, EXIT.y + 48);
+      }
+
+      function drawLaser(x, y, length, color, active = true) {
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = active ? 1 : .28;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = active ? 17 : 5;
+        ctx.lineWidth = active ? 5 : 3;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + length, y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = color;
+        for (const endpoint of [x, x + length]) {
+          ctx.beginPath(); ctx.arc(endpoint, y, 6, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawEchoLaser() {
+        const active = phase === "echo";
+        const shielded = active && distance(player, SWITCH) < SWITCH.radius + PLAYER_RADIUS;
+        ctx.save();
+        ctx.globalAlpha = active && !shielded ? .95 : .22;
+        ctx.strokeStyle = shielded ? "#5dffbd" : "#ff4771";
+        ctx.shadowColor = shielded ? "#5dffbd" : "#ff4771";
+        ctx.shadowBlur = active && !shielded ? 18 : 4;
+        ctx.lineWidth = active && !shielded ? 5 : 3;
+        ctx.beginPath();
+        ctx.moveTo(echoLaser.x, echoLaser.top);
+        ctx.lineTo(echoLaser.x, echoLaser.bottom);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = shielded ? "#74ffd0" : "#ff708a";
+        for (const y of [echoLaser.top, echoLaser.bottom]) {
+          ctx.beginPath(); ctx.arc(echoLaser.x, y, 6, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        ctx.save();
+        ctx.translate(echoLaser.x - 12, 102);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = shielded ? "#78ffd0" : "#ff8397";
+        ctx.font = "700 9px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(shielded ? "SHIELDED" : "ECHO BEAM", 0, 0);
+        ctx.restore();
+      }
+
+      function drawEntity(point, color, glow, label, alpha = 1, radius = PLAYER_RADIUS) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = glow;
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "rgba(255,255,255,.7)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = "rgba(8, 15, 27, .88)";
+        ctx.font = "800 8px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(label, point.x, point.y + .5);
+        ctx.restore();
+      }
+
+      function draw(now) {
+        drawBackground(now);
+        drawEchoLaser();
+        if (phase === "record" || phase === "rewind") {
+          drawLaser(recordingLaserX, recordingLaser.y, recordingLaser.length, "#ff5477", phase === "record");
+        }
+
+        if (phase === "echo" || phase === "won" || phase === "lost") {
+          drawEntity(ghost, "#9b7aff", "#b38cff", "G", phase === "won" ? .95 : .52, PLAYER_RADIUS);
+        }
+
+        if (phase === "rewind" && rewindFrom) {
+          const p = Math.min(1, (now - rewindStarted) / 1250);
+          const jitter = Math.sin(now / 22) * (1 - p) * 8;
+          drawEntity({ x: rewindFrom.x + jitter, y: rewindFrom.y }, "#b78aff", "#bd83ff", "↶", .85 - p * .5);
+          ctx.save();
+          ctx.strokeStyle = `rgba(177, 126, 255, ${.24 * (1 - p)})`;
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 5; i++) {
+            const index = Math.floor((1 - p) * (frames.length - 1) * (i + 1) / 6);
+            const frame = frames[Math.max(0, index)];
+            ctx.beginPath();
+            ctx.arc(frame.x, frame.y, 18 + i * 8, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else {
+          const color = phase === "record" ? "#ff5368" : "#45c9ff";
+          const glow = phase === "record" ? "#ff5368" : "#45c9ff";
+          drawEntity(player, color, glow, phase === "record" ? "1" : "2");
+        }
+
+        if (phase === "record") {
+          ctx.fillStyle = "rgba(231, 241, 255, .6)";
+          ctx.font = "600 10px system-ui, sans-serif";
+          ctx.textAlign = "left";
+          ctx.fillText("RECORDING", 28, 34);
+          ctx.fillStyle = "rgba(231, 241, 255, .35)";
+          ctx.fillText(`${frames.length} FRAMES`, 28, 50);
+        } else if (phase === "echo") {
+          ctx.fillStyle = "rgba(231, 241, 255, .6)";
+          ctx.font = "600 10px system-ui, sans-serif";
+          ctx.textAlign = "left";
+          ctx.fillText("ECHO PLAYBACK", 28, 34);
+          ctx.fillStyle = "rgba(231, 241, 255, .35)";
+          ctx.fillText(`${Math.min(frames.length, Math.floor(phaseTime / ROUND_SECONDS * frames.length))} / ${frames.length} FRAMES`, 28, 50);
+        }
+      }
+
+      function loop(now) {
+        if (!lastTime) lastTime = now;
+        const dt = Math.min((now - lastTime) / 1000, 0.05);
+        lastTime = now;
+        update(dt, now);
+        draw(now);
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener("keydown", event => {
+        const key = event.key.toLowerCase();
+        if (key === "r") {
+          reset();
+          return;
+        }
+        if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
+        if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) keys.add(key);
+      });
+
+      window.addEventListener("keyup", event => keys.delete(event.key.toLowerCase()));
+      window.addEventListener("blur", () => keys.clear());
+      document.getElementById("restart").addEventListener("click", reset);
+      document.getElementById("playAgain").addEventListener("click", reset);
+
+      reset();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
