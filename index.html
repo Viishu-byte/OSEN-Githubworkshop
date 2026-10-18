@@ -469,8 +469,12 @@
 
           const playerAtButton = distance(player, BUTTON) <= PLAYER_RADIUS + BUTTON.radius;
           const ghostAtButton = distance(ghost, BUTTON) <= PLAYER_RADIUS + BUTTON.radius;
-          if (playerAtButton && ghostAtButton) {
-            startNextRound();
+          if (ghostAtButton) {
+            if (playerAtButton) {
+              startNextRound();
+            } else {
+              finish("Echo desynchronized", "The Ghost reached the red button before you. Stay in sync and touch it together.");
+            }
             return;
           }
 
